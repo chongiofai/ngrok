@@ -51,9 +51,23 @@ type Tunnel struct {
 
 // Common functionality for registering virtually hosted protocols
 func registerVhost(t *Tunnel, protocol string, servingPort int) (err error) {
-	vhost := os.Getenv("VHOST")
-	if vhost == "" {
-		vhost = fmt.Sprintf("%s:%d", opts.domain, servingPort)
+	// Register for specific hostname
+	vhost := ""
+	envHostname := os.Getenv("NGROK_HOSTNAME")
+	reqHostname := strings.ToLower(strings.TrimSpace(t.req.Hostname))
+	cfgHostname := strings.ToLower(strings.TrimSpace(t.ctl.config.Hostname))
+	if reqHostname != "" {
+		vhost = reqHostname
+	} else if cfgHostname != "" {
+		vhost = cfgHostname
+	} else {
+		vhost = envHostname
+	}
+
+	// Register for specific subdomain
+	subdomain := strings.ToLower(strings.TrimSpace(t.req.Subdomain))
+	if subdomain != "" {
+		vhost = fmt.Sprintf("%s.%s", subdomain, vhost)
 	}
 
 	// Canonicalize virtual host by removing default port (e.g. :80 on HTTP)
@@ -61,35 +75,29 @@ func registerVhost(t *Tunnel, protocol string, servingPort int) (err error) {
 	if !ok {
 		return fmt.Errorf("Couldn't find default port for protocol %s", protocol)
 	}
-
-	defaultPortSuffix := fmt.Sprintf(":%d", defaultPort)
-	if strings.HasSuffix(vhost, defaultPortSuffix) {
-		vhost = vhost[0 : len(vhost)-len(defaultPortSuffix)]
+	if servingPort != defaultPort {
+		vhost = fmt.Sprintf("%s:%d", vhost, servingPort)
 	}
+
+	// Register for specific httprequest
+	httpRequestPath := strings.ToLower(strings.TrimSpace(t.req.HttpRequestPath))
+	// if httpRequestPath != "" {
+	// 	vhost = fmt.Sprintf("%s%s", vhost, httpRequestPath)
+	// }
 
 	// Canonicalize by always using lower-case
-	vhost = strings.ToLower(vhost)
+	t.url = strings.ToLower(fmt.Sprintf("%s://%s%s", protocol, vhost, httpRequestPath))
 
-	// Register for specific hostname
-	hostname := strings.ToLower(strings.TrimSpace(t.req.Hostname))
-	if hostname != "" {
-		t.url = fmt.Sprintf("%s://%s", protocol, hostname)
-		return tunnelRegistry.Register(t.url, t)
+	// Register for tunnel.
+	if subdomain == "" && httpRequestPath == "" &&
+		((cfgHostname != "" && reqHostname == cfgHostname) ||
+			(cfgHostname == "" && reqHostname == envHostname)) {
+		t.url, err = tunnelRegistry.RegisterRepeat(func() string {
+			return fmt.Sprintf("%s://%s/%x", protocol, vhost, rand.Int31())
+		}, t)
 	}
+	return tunnelRegistry.Register(t.url, t)
 
-	// Register for specific subdomain
-	subdomain := strings.ToLower(strings.TrimSpace(t.req.Subdomain))
-	if subdomain != "" {
-		t.url = fmt.Sprintf("%s://%s.%s", protocol, subdomain, vhost)
-		return tunnelRegistry.Register(t.url, t)
-	}
-
-	// Register for random URL
-	t.url, err = tunnelRegistry.RegisterRepeat(func() string {
-		return fmt.Sprintf("%s://%x.%s", protocol, rand.Int31(), vhost)
-	}, t)
-
-	return
 }
 
 // Create a new tunnel from a registration message received
@@ -113,7 +121,7 @@ func NewTunnel(m *msg.ReqTunnel, ctl *Control) (t *Tunnel, err error) {
 
 			// create the url
 			addr := t.listener.Addr().(*net.TCPAddr)
-			t.url = fmt.Sprintf("tcp://%s:%d", opts.domain, addr.Port)
+			t.url = fmt.Sprintf("tcp://%s:%d", config.Hostname, addr.Port)
 
 			// register it
 			if err = tunnelRegistry.RegisterAndCache(t.url, t); err != nil {

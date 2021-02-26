@@ -8,3 +8,8 @@ src/launchpad.net
 src/gopkg.in
 src/ngrok/client/assets/
 src/ngrok/server/assets/
+assets/server/tls/*.crt
+assets/server/tls/*.key
+assets/client/tls/*.crt
+assets/client/tls/*.key
+tmp/

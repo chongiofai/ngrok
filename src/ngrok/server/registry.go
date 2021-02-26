@@ -84,7 +84,7 @@ func (r *TunnelRegistry) Register(url string, t *Tunnel) error {
 	if r.tunnels[url] != nil {
 		return fmt.Errorf("The tunnel %s is already registered.", url)
 	}
-
+	r.Debug("Tunnel %s registered", url)
 	r.tunnels[url] = t
 
 	return nil

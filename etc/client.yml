@@ -1,0 +1,22 @@
+http_proxy: 
+server_addr: "ngrokd.ngrok.com"
+inspect_addr: 
+trust_host_root_certs: false
+auth_token: 
+tunnels: 
+  web: 
+    subdomain:
+    request_path: 
+    hostname: 
+    proto: 
+      http:  80
+    auth: 
+    remote_port: 
+  ssh: 
+    subdomain: 
+    request_path:
+    hostname: 
+    proto: 
+      http:  22
+    auth: 
+    remote_port: 

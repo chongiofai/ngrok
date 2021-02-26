@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"ngrok/version"
 	"os"
+	"time"
 )
 
 const usage1 string = `Usage: %s [OPTIONS] <local port or address>
 Options:
 `
-
 const usage2 string = `
 Examples:
 	ngrok 80
@@ -34,18 +34,41 @@ Examples:
 	ngrok version
 
 `
+const (
+	defaultServerAddr      string        = "ngrokd.ngrok.com:443"
+	defaultInspectAddr     string        = "127.0.0.1:4040"
+	pingInterval           time.Duration = 20 * time.Second
+	maxPongLatency         time.Duration = 15 * time.Second
+	updateCheckInterval    time.Duration = 6 * time.Hour
+	defaultConfigPath      string        = "/etc/ngrok/client.yml"
+	defaultLogTo           string        = "none"
+	defaultLogLevel        string        = "WARNING"
+	defaultAuthToken       string        = ""
+	defaultHttpAuth        string        = ""
+	defaultHostname        string        = ""
+	defaultProtocol        string        = "http+https"
+	defaultSubdomain       string        = ""
+	defaultHttpRequestPath string        = "/"
+)
+
+var (
+	defaultRootCrtPaths = []string{"assets/client/tls/ngrokroot.crt", "assets/client/tls/snakeoilca.crt"}
+	defaultRootCrtPath  = defaultRootCrtPaths[0]
+)
 
 type Options struct {
-	config    string
-	logto     string
-	loglevel  string
-	authtoken string
-	httpauth  string
-	hostname  string
-	protocol  string
-	subdomain string
-	command   string
-	args      []string
+	configPath      string
+	logTo           string
+	logLevel        string
+	authToken       string
+	httpAuth        string
+	hostname        string
+	protocol        string
+	subdomain       string
+	httpRequestPath string
+	rootCrtPath     string
+	command         string
+	args            []string
 }
 
 func ParseArgs() (opts *Options, err error) {
@@ -55,58 +78,70 @@ func ParseArgs() (opts *Options, err error) {
 		fmt.Fprintf(os.Stderr, usage2)
 	}
 
-	config := flag.String(
-		"config",
-		"",
-		"Path to ngrok configuration file. (default: $HOME/.ngrok)")
+	configPath := flag.String(
+		"config-path",
+		defaultConfigPath,
+		"Path to ngrok configuration file.")
 
-	logto := flag.String(
+	logTo := flag.String(
 		"log",
-		"none",
+		defaultLogTo,
 		"Write log messages to this file. 'stdout' and 'none' have special meanings")
 
-	loglevel := flag.String(
+	logLevel := flag.String(
 		"log-level",
-		"DEBUG",
+		defaultLogLevel,
 		"The level of messages to log. One of: DEBUG, INFO, WARNING, ERROR")
 
-	authtoken := flag.String(
+	authToken := flag.String(
 		"authtoken",
-		"",
-		"Authentication token for identifying an ngrok.com account")
+		defaultAuthToken,
+		"Authentication token for identifying")
 
-	httpauth := flag.String(
+	httpAuth := flag.String(
 		"httpauth",
-		"",
+		defaultHttpAuth,
 		"username:password HTTP basic auth creds protecting the public tunnel endpoint")
 
 	subdomain := flag.String(
 		"subdomain",
-		"",
+		defaultSubdomain,
 		"Request a custom subdomain from the ngrok server. (HTTP only)")
+
+	httpRequestPath := flag.String(
+		"requestPath",
+		defaultHttpRequestPath,
+		"HTTP Request a custom request path from the ngrok server. (HTTP only)")
 
 	hostname := flag.String(
 		"hostname",
-		"",
+		defaultHostname,
 		"Request a custom hostname from the ngrok server. (HTTP only) (requires CNAME of your DNS)")
 
 	protocol := flag.String(
 		"proto",
-		"http+https",
-		"The protocol of the traffic over the tunnel {'http', 'https', 'tcp'} (default: 'http+https')")
+		defaultProtocol,
+		"The protocol of the traffic over the tunnel {'http', 'https', 'tcp'}")
+
+	rootCrtPath := flag.String(
+		"root-crt-paths",
+		defaultRootCrtPath,
+		"")
 
 	flag.Parse()
 
 	opts = &Options{
-		config:    *config,
-		logto:     *logto,
-		loglevel:  *loglevel,
-		httpauth:  *httpauth,
-		subdomain: *subdomain,
-		protocol:  *protocol,
-		authtoken: *authtoken,
-		hostname:  *hostname,
-		command:   flag.Arg(0),
+		configPath:      *configPath,
+		logTo:           *logTo,
+		logLevel:        *logLevel,
+		authToken:       *authToken,
+		httpAuth:        *httpAuth,
+		hostname:        *hostname,
+		protocol:        *protocol,
+		subdomain:       *subdomain,
+		httpRequestPath: *httpRequestPath,
+		rootCrtPath:     *rootCrtPath,
+		command:         flag.Arg(0),
 	}
 
 	switch opts.command {

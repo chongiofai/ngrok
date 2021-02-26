@@ -2,13 +2,14 @@ package client
 
 import (
 	"fmt"
-	"github.com/inconshreveable/mousetrap"
 	"math/rand"
 	"ngrok/log"
 	"ngrok/util"
 	"os"
 	"runtime"
 	"time"
+
+	"github.com/inconshreveable/mousetrap"
 )
 
 func init() {
@@ -31,7 +32,7 @@ func Main() {
 	}
 
 	// set up logging
-	log.LogTo(opts.logto, opts.loglevel)
+	log.LogTo(opts.logTo, opts.logLevel)
 
 	// read configuration file
 	config, err := LoadConfiguration(opts)

@@ -1,0 +1,17 @@
+[Unit]
+Description=ngrok
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/ngrok -log /var/log/ngrok/client.log -log-level INFO -config /etc/ngrok/client.yml start-all
+ExecStop=/bin/pkill ngrok
+ExecStartPre=/bin/mkdir -p /var/log/ngrok
+KillMode=process
+IgnoreSIGPIPE=true
+Restart=always
+RestartSec=3
+Type=simple
+
+[Install]
+WantedBy=multi-user.target
+

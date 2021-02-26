@@ -3,7 +3,9 @@ package server
 import (
 	"crypto/tls"
 	"fmt"
+
 	vhost "github.com/inconshreveable/go-vhost"
+
 	//"net"
 	"ngrok/conn"
 	"ngrok/log"
@@ -87,10 +89,13 @@ func httpHandler(c conn.Conn, proto string) {
 	c = conn.Wrap(vhostConn, "pub")
 
 	// multiplex to find the right backend host
-	c.Debug("Found hostname %s in request", host)
-	tunnel := tunnelRegistry.Get(fmt.Sprintf("%s://%s", proto, host))
+	tunnel := tunnelRegistry.Get(host)
+	if tunnel != nil {
+		c.Debug("Found tunnel %s in request", host)
+	}
+
 	if tunnel == nil {
-		c.Info("No tunnel found for hostname %s", host)
+		c.Info("No tunnel found for host %s", host)
 		c.Write([]byte(fmt.Sprintf(NotFound, len(host)+18, host)))
 		return
 	}

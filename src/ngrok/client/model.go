@@ -3,7 +3,6 @@ package client
 import (
 	"crypto/tls"
 	"fmt"
-	metrics "github.com/rcrowley/go-metrics"
 	"io/ioutil"
 	"math"
 	"net"
@@ -18,15 +17,12 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
+
+	metrics "github.com/rcrowley/go-metrics"
 )
 
 const (
-	defaultServerAddr   = "ngrokd.ngrok.com:443"
-	defaultInspectAddr  = "127.0.0.1:4040"
-	pingInterval        = 20 * time.Second
-	maxPongLatency      = 15 * time.Second
-	updateCheckInterval = 6 * time.Hour
-	BadGateway          = `<html>
+	BadGateway = `<html>
 <body style="background-color: #97a8b9">
     <div style="margin:auto; width:400px;padding: 20px 60px; background-color: #D3D3D3; border: 5px solid maroon;">
         <h2>Tunnel %s unavailable</h2>
@@ -106,9 +102,9 @@ func newClientModel(config *Configuration, ctl mvc.Controller) *ClientModel {
 		m.Info("Trusting host's root certificates")
 		m.tlsConfig = &tls.Config{}
 	} else {
-		m.Info("Trusting root CAs: %v", rootCrtPaths)
+		m.Info("Trusting root CAs: %v", defaultRootCrtPaths)
 		var err error
-		if m.tlsConfig, err = LoadTLSConfig(rootCrtPaths); err != nil {
+		if m.tlsConfig, err = LoadTLSConfig(defaultRootCrtPaths); err != nil {
 			panic(err)
 		}
 	}
@@ -276,12 +272,13 @@ func (c *ClientModel) control() {
 		}
 
 		reqTunnel := &msg.ReqTunnel{
-			ReqId:      util.RandId(8),
-			Protocol:   strings.Join(protocols, "+"),
-			Hostname:   config.Hostname,
-			Subdomain:  config.Subdomain,
-			HttpAuth:   config.HttpAuth,
-			RemotePort: config.RemotePort,
+			ReqId:           util.RandId(8),
+			Protocol:        strings.Join(protocols, "+"),
+			Hostname:        config.Hostname,
+			Subdomain:       config.Subdomain,
+			HttpRequestPath: config.HttpRequestPath,
+			HttpAuth:        config.HttpAuth,
+			RemotePort:      config.RemotePort,
 		}
 
 		// send the tunnel request

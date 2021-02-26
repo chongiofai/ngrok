@@ -1,0 +1,8 @@
+http_addr: ":80"
+https_addr: ":443"
+tunnel_addr: ":4443"
+domain: "ngrokd.ngrok.com"
+tls_crt: "/etc/ngrok/tls/server.crt"
+tls_key: "/etc/ngrok/tls/server.key"
+log_to: "/var/log/ngrok/server.log"
+log_level: "INFO"

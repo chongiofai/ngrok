@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	gometrics "github.com/rcrowley/go-metrics"
 	"io/ioutil"
 	"net/http"
 	"ngrok/conn"
 	"ngrok/log"
 	"os"
 	"time"
+
+	gometrics "github.com/rcrowley/go-metrics"
 )
 
 var metrics Metrics
@@ -264,6 +265,7 @@ func (k *KeenIoMetrics) CloseConnection(t *Tunnel, c conn.Conn, start time.Time,
 		Reason             string
 		HttpAuth           bool
 		Subdomain          bool
+		HttpRequestPath    bool
 		TunnelDuration     float64
 		ConnectionDuration float64
 		BytesIn            int64
@@ -280,6 +282,7 @@ func (k *KeenIoMetrics) CloseConnection(t *Tunnel, c conn.Conn, start time.Time,
 		Version:            t.ctl.auth.MmVersion,
 		HttpAuth:           t.req.HttpAuth != "",
 		Subdomain:          t.req.Subdomain != "",
+		HttpRequestPath:    t.req.HttpRequestPath != "",
 		TunnelDuration:     time.Since(t.start).Seconds(),
 		ConnectionDuration: time.Since(start).Seconds(),
 		BytesIn:            in,
@@ -298,17 +301,18 @@ type KeenStruct struct {
 
 func (k *KeenIoMetrics) CloseTunnel(t *Tunnel) {
 	event := struct {
-		Keen      KeenStruct `json:"keen"`
-		OS        string
-		ClientId  string
-		Protocol  string
-		Url       string
-		User      string
-		Version   string
-		Reason    string
-		Duration  float64
-		HttpAuth  bool
-		Subdomain bool
+		Keen            KeenStruct `json:"keen"`
+		OS              string
+		ClientId        string
+		Protocol        string
+		Url             string
+		User            string
+		Version         string
+		Reason          string
+		Duration        float64
+		HttpAuth        bool
+		Subdomain       bool
+		HttpRequestPath bool
 	}{
 		Keen: KeenStruct{
 			Timestamp: t.start.UTC().Format("2006-01-02T15:04:05.000Z"),
@@ -320,9 +324,10 @@ func (k *KeenIoMetrics) CloseTunnel(t *Tunnel) {
 		User:     t.ctl.auth.User,
 		Version:  t.ctl.auth.MmVersion,
 		//Reason: reason,
-		Duration:  time.Since(t.start).Seconds(),
-		HttpAuth:  t.req.HttpAuth != "",
-		Subdomain: t.req.Subdomain != "",
+		Duration:        time.Since(t.start).Seconds(),
+		HttpAuth:        t.req.HttpAuth != "",
+		Subdomain:       t.req.Subdomain != "",
+		HttpRequestPath: t.req.HttpRequestPath != "",
 	}
 
 	k.Metrics <- &KeenIoMetric{Collection: "CloseTunnel", Event: event}

@@ -2,17 +2,16 @@ package client
 
 import (
 	"fmt"
-	"gopkg.in/yaml.v1"
 	"io/ioutil"
 	"net"
 	"net/url"
 	"ngrok/log"
 	"os"
-	"os/user"
-	"path"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"gopkg.in/yaml.v1"
 )
 
 type Configuration struct {
@@ -27,17 +26,18 @@ type Configuration struct {
 }
 
 type TunnelConfiguration struct {
-	Subdomain  string            `yaml:"subdomain,omitempty"`
-	Hostname   string            `yaml:"hostname,omitempty"`
-	Protocols  map[string]string `yaml:"proto,omitempty"`
-	HttpAuth   string            `yaml:"auth,omitempty"`
-	RemotePort uint16            `yaml:"remote_port,omitempty"`
+	Subdomain       string            `yaml:"subdomain,omitempty"`
+	Hostname        string            `yaml:"hostname,omitempty"`
+	Protocols       map[string]string `yaml:"proto,omitempty"`
+	HttpAuth        string            `yaml:"auth,omitempty"`
+	HttpRequestPath string            `yaml:"http_request_path,omitempty"`
+	RemotePort      uint16            `yaml:"remote_port,omitempty"`
 }
 
 func LoadConfiguration(opts *Options) (config *Configuration, err error) {
-	configPath := opts.config
+	configPath := opts.configPath
 	if configPath == "" {
-		configPath = defaultPath()
+		configPath = defaultConfigPath
 	}
 
 	log.Info("Reading configuration file %s", configPath)
@@ -45,7 +45,7 @@ func LoadConfiguration(opts *Options) (config *Configuration, err error) {
 	if err != nil {
 		// failure to read a configuration file is only a fatal error if
 		// the user specified one explicitly
-		if opts.config != "" {
+		if opts.configPath != "" {
 			err = fmt.Errorf("Failed to read configuration file %s: %v", configPath, err)
 			return
 		}
@@ -133,10 +133,10 @@ func LoadConfiguration(opts *Options) (config *Configuration, err error) {
 	}
 
 	// override configuration with command-line options
-	config.LogTo = opts.logto
+	config.LogTo = opts.logTo
 	config.Path = configPath
-	if opts.authtoken != "" {
-		config.AuthToken = opts.authtoken
+	if opts.authToken != "" {
+		config.AuthToken = opts.authToken
 	}
 
 	switch opts.command {
@@ -146,7 +146,7 @@ func LoadConfiguration(opts *Options) (config *Configuration, err error) {
 		config.Tunnels["default"] = &TunnelConfiguration{
 			Subdomain: opts.subdomain,
 			Hostname:  opts.hostname,
-			HttpAuth:  opts.httpauth,
+			HttpAuth:  opts.httpAuth,
 			Protocols: make(map[string]string),
 		}
 
@@ -199,21 +199,6 @@ func LoadConfiguration(opts *Options) (config *Configuration, err error) {
 	}
 
 	return
-}
-
-func defaultPath() string {
-	user, err := user.Current()
-
-	// user.Current() does not work on linux when cross compiling because
-	// it requires CGO; use os.Getenv("HOME") hack until we compile natively
-	homeDir := os.Getenv("HOME")
-	if err != nil {
-		log.Warn("Failed to get user's home directory: %s. Using $HOME: %s", err.Error(), homeDir)
-	} else {
-		homeDir = user.HomeDir
-	}
-
-	return path.Join(homeDir, ".ngrok")
 }
 
 func normalizeAddress(addr string, propName string) (string, error) {

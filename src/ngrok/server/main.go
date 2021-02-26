@@ -2,6 +2,7 @@ package server
 
 import (
 	"crypto/tls"
+	"fmt"
 	"math/rand"
 	"ngrok/conn"
 	log "ngrok/log"
@@ -24,6 +25,7 @@ var (
 
 	// XXX: kill these global variables - they're only used in tunnel.go for constructing forwarding URLs
 	opts      *Options
+	config    *Configuration
 	listeners map[string]*conn.Listener
 )
 
@@ -55,9 +57,9 @@ func NewProxy(pxyConn conn.Conn, regPxy *msg.RegProxy) {
 // for ease of deployment. The hope is that by running on port 443, using
 // TLS and running all connections over the same port, we can bust through
 // restrictive firewalls.
-func tunnelListener(addr string, tlsConfig *tls.Config) {
+func tunnelListener(config *Configuration, tlsConfig *tls.Config) {
 	// listen for incoming connections
-	listener, err := conn.Listen(addr, "tun", tlsConfig)
+	listener, err := conn.Listen(config.TunnelAddr, "tun", tlsConfig)
 	if err != nil {
 		panic(err)
 	}
@@ -86,7 +88,7 @@ func tunnelListener(addr string, tlsConfig *tls.Config) {
 
 			switch m := rawMsg.(type) {
 			case *msg.Auth:
-				NewControl(tunnelConn, m)
+				NewControl(tunnelConn, config, m)
 
 			case *msg.RegProxy:
 				NewProxy(tunnelConn, m)
@@ -101,9 +103,14 @@ func tunnelListener(addr string, tlsConfig *tls.Config) {
 func Main() {
 	// parse options
 	opts = parseArgs()
+	config, err := LoadConfiguration(opts)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 
 	// init logging
-	log.LogTo(opts.logto, opts.loglevel)
+	log.LogTo(config.LogTo, config.LogLevel)
 
 	// seed random number generator
 	seed, err := util.RandomSeed()
@@ -121,21 +128,21 @@ func Main() {
 	listeners = make(map[string]*conn.Listener)
 
 	// load tls configuration
-	tlsConfig, err := LoadTLSConfig(opts.tlsCrt, opts.tlsKey)
+	tlsConfig, err := LoadTLSConfig(config.TlsCrt, config.TlsKey)
 	if err != nil {
 		panic(err)
 	}
 
 	// listen for http
-	if opts.httpAddr != "" {
-		listeners["http"] = startHttpListener(opts.httpAddr, nil)
+	if config.HTTPAddr != "" {
+		listeners["http"] = startHttpListener(config.HTTPAddr, nil)
 	}
 
 	// listen for https
-	if opts.httpsAddr != "" {
-		listeners["https"] = startHttpListener(opts.httpsAddr, tlsConfig)
+	if config.HTTPSAddr != "" {
+		listeners["https"] = startHttpListener(config.HTTPSAddr, tlsConfig)
 	}
 
 	// ngrok clients
-	tunnelListener(opts.tunnelAddr, tlsConfig)
+	tunnelListener(config, tlsConfig)
 }

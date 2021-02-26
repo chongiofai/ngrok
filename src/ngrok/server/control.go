@@ -58,9 +58,12 @@ type Control struct {
 
 	// synchronizer for controller shutdown of entire Control
 	shutdown *util.Shutdown
+
+	// server config
+	config *Configuration
 }
 
-func NewControl(ctlConn conn.Conn, authMsg *msg.Auth) {
+func NewControl(ctlConn conn.Conn, config *Configuration, authMsg *msg.Auth) {
 	var err error
 
 	// create the object
@@ -75,6 +78,7 @@ func NewControl(ctlConn conn.Conn, authMsg *msg.Auth) {
 		readerShutdown:  util.NewShutdown(),
 		managerShutdown: util.NewShutdown(),
 		shutdown:        util.NewShutdown(),
+		config:          config,
 	}
 
 	failAuth := func(e error) {
